@@ -4,7 +4,7 @@
 
 #include "Modules/ModuleManager.h"
 
-class FLittleBlueprintUtilsDeveloperModule : public IModuleInterface
+class FLittleBlueprintUtilsNodesModule : public IModuleInterface
 {
 public:
 

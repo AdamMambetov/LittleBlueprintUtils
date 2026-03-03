@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class LittleBlueprintUtilsDeveloper : ModuleRules
+public class LittleBlueprintUtilsNodes : ModuleRules
 {
-	public LittleBlueprintUtilsDeveloper(ReadOnlyTargetRules Target) : base(Target)
+	public LittleBlueprintUtilsNodes(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
@@ -41,7 +41,7 @@ public class LittleBlueprintUtilsDeveloper : ModuleRules
 				"BlueprintGraph",
 				"KismetCompiler",
 				"UnrealEd",
-				"LittleBlueprintUtils",
+				"LittleBlueprintUtilsRuntime",
 				"EditorStyle",
 				// ... add private dependencies that you statically link with here ...
 			}

@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.0",
+	"VersionName": "0.1",
 	"FriendlyName": "LittleBlueprintUtils",
 	"Description": "",
 	"Category": "Other",
@@ -16,13 +16,13 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "LittleBlueprintUtils",
+			"Name": "LittleBlueprintUtilsRuntime",
 			"Type": "Runtime",
-			"LoadingPhase": "PreLoadingScreen"
+			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "LittleBlueprintUtilsDeveloper",
-			"Type": "Developer",
+			"Name": "LittleBlueprintUtilsNodes",
+			"Type": "UncookedOnly",
 			"LoadingPhase": "Default"
 		}
 	]
