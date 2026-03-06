@@ -102,14 +102,15 @@ void UK2Node_ForEachMap::ExpandNode(
 	}
 
 	// Create int Map Index
-	auto* MapIndexNode = CompilerContext.SpawnIntermediateNode<UK2Node_TemporaryVariable>(this, SourceGraph);
+	auto* MapIndexNode = CompilerContext
+		.SpawnIntermediateNode<UK2Node_TemporaryVariable>(this, SourceGraph);
 	MapIndexNode->VariableType.PinCategory = UEdGraphSchema_K2::PC_Int;
 	MapIndexNode->AllocateDefaultPins();
 	UEdGraphPin* MapIndexPin = MapIndexNode->GetVariablePin();
-	check(MapIndexPin);
 
 	// Initialize Map index
-	auto* MapIndexInitialize = CompilerContext.SpawnIntermediateNode<UK2Node_AssignmentStatement>(this, SourceGraph);
+	auto* MapIndexInitialize = CompilerContext
+		.SpawnIntermediateNode<UK2Node_AssignmentStatement>(this, SourceGraph);
 	MapIndexInitialize->AllocateDefaultPins();
 	MapIndexInitialize->GetValuePin()->DefaultValue = TEXT("0");
 	bResult &= Schema->TryCreateConnection(MapIndexPin, MapIndexInitialize->GetVariablePin());
@@ -117,7 +118,8 @@ void UK2Node_ForEachMap::ExpandNode(
 	//UEdGraphPin* StartLoopExecInPin = ArrayIndexInitialize->GetExecPin();
 
 	// Get Map Keys
-	auto* MapKeys = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+	auto* MapKeys = CompilerContext
+		.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
 	FName MapKeysFuncName = GET_FUNCTION_NAME_CHECKED(UBlueprintMapLibrary, Map_Keys);
 	MapKeys->SetFromFunction(UBlueprintMapLibrary::StaticClass()->FindFunctionByName(MapKeysFuncName));
 	MapKeys->AllocateDefaultPins();
@@ -126,111 +128,79 @@ void UK2Node_ForEachMap::ExpandNode(
 	UEdGraphPin* KeysTargetMapPin = MapKeys->FindPinChecked(TEXT("TargetMap"));
 	UEdGraphPin* MapKeysPin = MapKeys->FindPinChecked(TEXT("Keys"));
 
-	// ВАЖНО: явно копируем PinType
-	KeysTargetMapPin->PinType = MapPin->PinType;
-	MapKeysPin->PinType.PinCategory = MapPin->PinType.PinCategory;
-	MapKeysPin->PinType.PinSubCategory = MapPin->PinType.PinSubCategory;
-	MapKeysPin->PinType.PinSubCategoryObject = MapPin->PinType.PinSubCategoryObject;
-
 	CompilerContext.CopyPinLinksToIntermediate(*MapPin, *KeysTargetMapPin);
 
-
-	// Get Map Values
-	auto* MapValues = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
-	FName MapValuesFuncName = GET_FUNCTION_NAME_CHECKED(UBlueprintMapLibrary, Map_Values);
-	MapValues->SetFromFunction(UBlueprintMapLibrary::StaticClass()->FindFunctionByName(MapValuesFuncName));
-	MapValues->AllocateDefaultPins();
-	bResult &= Schema->TryCreateConnection(MapKeys->GetThenPin(), MapValues->GetExecPin());
-
-	UEdGraphPin* MapValuesTargetMapPin = MapValues->FindPinChecked(TEXT("TargetMap"));
-	UEdGraphPin* MapValuesPin = MapValues->FindPinChecked(TEXT("Values"));
-
-	// ВАЖНО: явно копируем PinType
-	MapValuesTargetMapPin->PinType = MapPin->PinType;
-	MapValuesPin->PinType.PinCategory = MapPin->PinType.PinValueType.TerminalCategory;
-	MapValuesPin->PinType.PinSubCategory = MapPin->PinType.PinValueType.TerminalSubCategory;
-	MapValuesPin->PinType.PinSubCategoryObject = MapPin->PinType.PinValueType.TerminalSubCategoryObject;
-
-	CompilerContext.CopyPinLinksToIntermediate(*MapPin, *MapValuesTargetMapPin);
-
-	// Do loop branch
-	auto* Branch = CompilerContext.SpawnIntermediateNode<UK2Node_IfThenElse>(this, SourceGraph);
-	Branch->AllocateDefaultPins();
-	bResult &= Schema->TryCreateConnection(MapValues->GetThenPin(), Branch->GetExecPin());
-	// bResult &= Schema->TryCreateConnection(MapIndexInitialize->GetThenPin(), Branch->GetExecPin());
-	CompilerContext.MovePinLinksToIntermediate(*CompletedPin, *Branch->GetElsePin());
-
-	// Do loop condition
-	auto* Condition = CompilerContext
-		.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
-	FName LessFuncName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Less_IntInt);
-	Condition->SetFromFunction(UKismetMathLibrary::StaticClass()->FindFunctionByName(LessFuncName));
-	Condition->AllocateDefaultPins();
-	bResult &= Schema->TryCreateConnection(Condition->GetReturnValuePin(), Branch->GetConditionPin());
-	bResult &= Schema->TryCreateConnection(Condition->FindPinChecked(TEXT("A")), MapIndexPin);
-	// Condition->FindPinChecked(TEXT("B"))->DefaultValue = TEXT("3");
-
 	// Map Length
-	auto* MapLength = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+	auto* MapLength = CompilerContext
+		.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
 	FName MapLengthFuncName = GET_FUNCTION_NAME_CHECKED(UBlueprintMapLibrary, Map_Length);
 	MapLength->SetFromFunction(UBlueprintMapLibrary::StaticClass()->FindFunctionByName(MapLengthFuncName));
 	MapLength->AllocateDefaultPins();
-	bResult &= Schema->TryCreateConnection(MapLength->GetReturnValuePin(), Condition->FindPinChecked(TEXT("B")));
-
+	
 	UEdGraphPin* LengthTargetMapPin = MapLength->FindPinChecked(TEXT("TargetMap"));
-
-	// ВАЖНО: явно копируем PinType, включая ContainerType и ключ/значение
-	LengthTargetMapPin->PinType = MapPin->PinType;
 	CompilerContext.CopyPinLinksToIntermediate(*MapPin, *LengthTargetMapPin);
+	
+	// Do loop condition
+	auto* Condition = CompilerContext
+	.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+	FName LessFuncName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Less_IntInt);
+	Condition->SetFromFunction(UKismetMathLibrary::StaticClass()->FindFunctionByName(LessFuncName));
+	Condition->AllocateDefaultPins();
+	bResult &= Schema->TryCreateConnection(Condition->FindPinChecked(TEXT("A")), MapIndexPin);
+	bResult &= Schema->TryCreateConnection(MapLength->GetReturnValuePin(), Condition->FindPinChecked(TEXT("B")));
+	
+	// Do loop branch
+	auto* Branch = CompilerContext
+	.SpawnIntermediateNode<UK2Node_IfThenElse>(this, SourceGraph);
+	Branch->AllocateDefaultPins();
+	bResult &= Schema->TryCreateConnection(MapKeys->GetThenPin(), Branch->GetExecPin());
+	bResult &= Schema->TryCreateConnection(Condition->GetReturnValuePin(), Branch->GetConditionPin());
+	// bResult &= Schema->TryCreateConnection(MapIndexInitialize->GetThenPin(), Branch->GetExecPin());
+	CompilerContext.MovePinLinksToIntermediate(*CompletedPin, *Branch->GetElsePin());
 
 	// body sequence
-	auto* Sequence = CompilerContext.SpawnIntermediateNode<UK2Node_ExecutionSequence>(this, SourceGraph);
+	auto* Sequence = CompilerContext
+		.SpawnIntermediateNode<UK2Node_ExecutionSequence>(this, SourceGraph);
 	Sequence->AllocateDefaultPins();
 	bResult &= Schema->TryCreateConnection(Branch->GetThenPin(), Sequence->GetExecPin());
 	CompilerContext.MovePinLinksToIntermediate(*LoopPin, *Sequence->GetThenPinGivenIndex(0));
 
 	// Get Map Key
-	auto* GetKey = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+	auto* GetKey = CompilerContext
+		.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
 	FName GetKeyFuncName = GET_FUNCTION_NAME_CHECKED(UKismetArrayLibrary, Array_Get);
 	GetKey->SetFromFunction(UKismetArrayLibrary::StaticClass()->FindFunctionByName(GetKeyFuncName));
 	GetKey->AllocateDefaultPins();
 	UEdGraphPin* GetKeyTargetArrayPin = GetKey->FindPinChecked(TEXT("TargetArray"));
 	UEdGraphPin* GetKeyTargetArrayItemPin = GetKey->FindPinChecked(TEXT("Item"));
 
-	// ВАЖНО: явно копируем PinType
-	GetKeyTargetArrayPin->PinType.PinCategory = MapPin->PinType.PinCategory;
-	GetKeyTargetArrayPin->PinType.PinSubCategory = MapPin->PinType.PinSubCategory;
-	GetKeyTargetArrayPin->PinType.PinSubCategoryObject = MapPin->PinType.PinSubCategoryObject;
-	GetKeyTargetArrayItemPin->PinType.PinCategory = MapPin->PinType.PinCategory;
-	GetKeyTargetArrayItemPin->PinType.PinSubCategory = MapPin->PinType.PinSubCategory;
-	GetKeyTargetArrayItemPin->PinType.PinSubCategoryObject = MapPin->PinType.PinSubCategoryObject;
+	GetKeyTargetArrayPin->PinType.PinCategory = MapKeysPin->PinType.PinCategory;
+	GetKeyTargetArrayPin->PinType.PinSubCategoryObject = MapKeysPin->PinType.PinSubCategoryObject;
+	GetKeyTargetArrayItemPin->PinType.PinCategory = MapKeysPin->PinType.PinCategory;
+	GetKeyTargetArrayItemPin->PinType.PinSubCategoryObject = MapKeysPin->PinType.PinSubCategoryObject;
 
+	// bResult &= Schema->TryCreateConnection(MapKeysPin, GetKeyTargetArrayPin);
 	bResult &= Schema->TryCreateConnection(MapKeysPin, GetKeyTargetArrayPin);
 	bResult &= Schema->TryCreateConnection(GetKey->FindPinChecked(TEXT("Index")), MapIndexPin);
 	CompilerContext.MovePinLinksToIntermediate(*KeyPin, *GetKeyTargetArrayItemPin);
 
 	// Get Map Value
-	auto* GetValue = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
-	FName GetValueFuncName = GET_FUNCTION_NAME_CHECKED(UKismetArrayLibrary, Array_Get);
-	GetValue->SetFromFunction(UKismetArrayLibrary::StaticClass()->FindFunctionByName(GetValueFuncName));
-	GetValue->AllocateDefaultPins();
-	UEdGraphPin* GetValueTargetArrayPin = GetValue->FindPinChecked(TEXT("TargetArray"));
-	UEdGraphPin* GetValueTargetArrayItemPin = GetValue->FindPinChecked(TEXT("Item"));
+	auto* MapFind = CompilerContext
+		.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+	FName MapFindFuncName = GET_FUNCTION_NAME_CHECKED(UBlueprintMapLibrary, Map_Find);
+	MapFind->SetFromFunction(UBlueprintMapLibrary::StaticClass()->FindFunctionByName(MapFindFuncName));
+	MapFind->AllocateDefaultPins();
+	UEdGraphPin* MapFindTargetMapPin = MapFind->FindPinChecked(TEXT("TargetMap"));
+	UEdGraphPin* MapFindKeyPin = MapFind->FindPinChecked(TEXT("Key"));
+	UEdGraphPin* MapFindValuePin = MapFind->FindPinChecked(TEXT("Value"));
 
-	// ВАЖНО: явно копируем PinType
-	GetValueTargetArrayPin->PinType.PinCategory = MapPin->PinType.PinValueType.TerminalCategory;
-	GetValueTargetArrayPin->PinType.PinSubCategory = MapPin->PinType.PinValueType.TerminalSubCategory;
-	GetValueTargetArrayPin->PinType.PinSubCategoryObject = MapPin->PinType.PinValueType.TerminalSubCategoryObject;
-	GetValueTargetArrayItemPin->PinType.PinCategory = MapPin->PinType.PinValueType.TerminalCategory;
-	GetValueTargetArrayItemPin->PinType.PinSubCategory = MapPin->PinType.PinValueType.TerminalSubCategory;
-	GetValueTargetArrayItemPin->PinType.PinSubCategoryObject = MapPin->PinType.PinValueType.TerminalSubCategoryObject;
-
-	bResult &= Schema->TryCreateConnection(MapValuesPin, GetValueTargetArrayPin);
-	bResult &= Schema->TryCreateConnection(GetValue->FindPinChecked(TEXT("Index")), MapIndexPin);
-	CompilerContext.MovePinLinksToIntermediate(*ValuePin, *GetValueTargetArrayItemPin);
+	CompilerContext.CopyPinLinksToIntermediate(*MapPin, *MapFindTargetMapPin);
+	bResult &= Schema->TryCreateConnection(MapFindKeyPin, GetKeyTargetArrayItemPin);
+	CompilerContext.MovePinLinksToIntermediate(*ValuePin, *MapFindValuePin);
 
 	// Map Index increment
-	auto* Increment = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+	auto* Increment = CompilerContext
+		.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
 	FName AddFuncName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_IntInt);
 	Increment->SetFromFunction(UKismetMathLibrary::StaticClass()->FindFunctionByName(AddFuncName));
 	Increment->AllocateDefaultPins();
